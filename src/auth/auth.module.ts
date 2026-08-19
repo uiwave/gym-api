@@ -9,6 +9,7 @@ import { RolesGuard } from './guards/roles.guard';
   imports: [
     BetterAuthModule.forRoot({
       auth,
+      disableGlobalAuthGuard: true,
     }),
   ],
   controllers: [AuthController],
