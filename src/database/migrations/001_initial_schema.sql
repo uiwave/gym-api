@@ -1,8 +1,66 @@
 -- ============================================================
--- GYM API - 004_gym_tables.sql
--- Tablas de dominio del gimnasio
--- Requiere: 001_extension.sql, 002_better_auth.sql, 003_members.sql
+-- GYM API - 001_initial_schema.sql
+-- VERSIÓN 1 - Esquema completo de la base de datos
+-- Ejecutar con: psql -f src/database/migrations/001_initial_schema.sql
 -- ============================================================
+
+-- ------------------------------------------------------------
+-- Extensiones
+-- ------------------------------------------------------------
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
+-- ------------------------------------------------------------
+-- Better Auth
+-- ------------------------------------------------------------
+create table "user" ("id" text not null primary key, "name" text not null, "email" text not null unique, "emailVerified" boolean not null, "image" text, "createdAt" timestamptz default CURRENT_TIMESTAMP not null, "updatedAt" timestamptz default CURRENT_TIMESTAMP not null, "role" text, "banned" boolean, "banReason" text, "banExpires" timestamptz);
+
+create table "session" ("id" text not null primary key, "expiresAt" timestamptz not null, "token" text not null unique, "createdAt" timestamptz default CURRENT_TIMESTAMP not null, "updatedAt" timestamptz not null, "ipAddress" text, "userAgent" text, "userId" text not null references "user" ("id") on delete cascade, "impersonatedBy" text);
+
+create table "account" ("id" text not null primary key, "accountId" text not null, "providerId" text not null, "userId" text not null references "user" ("id") on delete cascade, "accessToken" text, "refreshToken" text, "idToken" text, "accessTokenExpiresAt" timestamptz, "refreshTokenExpiresAt" timestamptz, "scope" text, "password" text, "createdAt" timestamptz default CURRENT_TIMESTAMP not null, "updatedAt" timestamptz not null);
+
+create table "verification" ("id" text not null primary key, "identifier" text not null, "value" text not null, "expiresAt" timestamptz not null, "createdAt" timestamptz default CURRENT_TIMESTAMP not null, "updatedAt" timestamptz default CURRENT_TIMESTAMP not null);
+
+create index "session_userId_idx" on "session" ("userId");
+
+create index "account_userId_idx" on "account" ("userId");
+
+create index "verification_identifier_idx" on "verification" ("identifier");
+
+-- ------------------------------------------------------------
+-- members
+-- ------------------------------------------------------------
+CREATE TABLE members (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+
+    user_id TEXT NOT NULL UNIQUE,
+
+    document_number VARCHAR(20) UNIQUE,
+    phone VARCHAR(20),
+    birth_date DATE,
+    address TEXT,
+
+    emergency_contact_name VARCHAR(100),
+    emergency_contact_phone VARCHAR(20),
+
+    status VARCHAR(20) NOT NULL DEFAULT 'active',
+
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT members_user_id_fk
+        FOREIGN KEY (user_id)
+        REFERENCES "user"(id)
+        ON DELETE CASCADE,
+
+    CONSTRAINT members_status_check
+        CHECK (status IN ('active', 'inactive', 'suspended'))
+);
+
+CREATE INDEX members_user_id_idx
+ON members(user_id);
+
+CREATE INDEX members_status_idx
+ON members(status);
 
 -- ------------------------------------------------------------
 -- plans
@@ -181,3 +239,37 @@ CREATE TRIGGER routines_set_updated_at
 CREATE TRIGGER routine_exercises_set_updated_at
     BEFORE UPDATE ON routine_exercises
     FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+-- ------------------------------------------------------------
+-- Índices para columnas usadas frecuentemente en búsquedas
+-- ------------------------------------------------------------
+CREATE INDEX members_document_number_idx ON members(document_number);
+
+CREATE INDEX memberships_member_id_idx ON memberships(member_id);
+CREATE INDEX memberships_plan_id_idx ON memberships(plan_id);
+CREATE INDEX memberships_status_idx ON memberships(status);
+CREATE INDEX memberships_end_date_idx ON memberships(end_date);
+
+CREATE INDEX payments_member_id_idx ON payments(member_id);
+CREATE INDEX payments_membership_id_idx ON payments(membership_id);
+CREATE INDEX payments_payment_date_idx ON payments(payment_date);
+CREATE INDEX payments_status_idx ON payments(status);
+
+CREATE INDEX trainers_user_id_idx ON trainers(user_id);
+CREATE INDEX trainers_status_idx ON trainers(status);
+
+CREATE INDEX exercises_muscle_group_idx ON exercises(muscle_group);
+CREATE INDEX exercises_difficulty_idx ON exercises(difficulty);
+
+CREATE INDEX routines_member_id_idx ON routines(member_id);
+CREATE INDEX routines_trainer_id_idx ON routines(trainer_id);
+CREATE INDEX routines_status_idx ON routines(status);
+
+CREATE INDEX routine_exercises_routine_id_idx ON routine_exercises(routine_id);
+CREATE INDEX routine_exercises_exercise_id_idx ON routine_exercises(exercise_id);
+
+CREATE INDEX attendance_member_id_idx ON attendance(member_id);
+CREATE INDEX attendance_date_idx ON attendance(date);
+
+CREATE INDEX notifications_user_id_idx ON notifications(user_id);
+CREATE INDEX notifications_read_idx ON notifications(read);
