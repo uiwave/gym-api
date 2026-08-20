@@ -1,7 +1,7 @@
 import 'dotenv/config';
 
 import { betterAuth } from 'better-auth';
-import { admin } from 'better-auth/plugins';
+import { admin, bearer, openAPI } from 'better-auth/plugins';
 import { Pool } from 'pg';
 
 import {
@@ -21,14 +21,13 @@ const databaseName = process.env.DATABASE_NAME;
 const betterAuthSecret = process.env.BETTER_AUTH_SECRET;
 const betterAuthUrl = process.env.BETTER_AUTH_URL;
 
-console.log('DATABASE_HOST:', databaseHost);
-console.log('DATABASE_PORT:', databasePort);
-console.log('DATABASE_USER:', databaseUser);
-console.log(
-  'DATABASE_PASSWORD:',
-  databasePassword ? 'EXISTE' : 'NO EXISTE',
-);
-console.log('DATABASE_NAME:', databaseName);
+const corsOrigin = process.env.CORS_ORIGIN;
+const trustedOrigins = corsOrigin
+  ? corsOrigin
+      .split(',')
+      .map((origin) => origin.trim())
+      .filter(Boolean)
+  : [];
 
 export const auth = betterAuth({
   database: new Pool({
@@ -42,6 +41,8 @@ export const auth = betterAuth({
   secret: betterAuthSecret,
 
   baseURL: betterAuthUrl,
+
+  trustedOrigins,
 
   emailAndPassword: {
     enabled: true,
@@ -62,5 +63,9 @@ export const auth = betterAuth({
 
       adminRoles: ['admin'],
     }),
+
+    bearer(),
+
+    openAPI(),
   ],
 });

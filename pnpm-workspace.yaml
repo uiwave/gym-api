@@ -1,4 +1,5 @@
 allowBuilds:
   '@prisma/client': false
+  '@scarf/scarf': true
   better-sqlite3: true
   unrs-resolver: false
