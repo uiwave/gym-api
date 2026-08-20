@@ -1,7 +1,7 @@
 import 'dotenv/config';
 
 import { betterAuth } from 'better-auth';
-import { admin, openAPI } from 'better-auth/plugins';
+import { admin, bearer, openAPI } from 'better-auth/plugins';
 import { Pool } from 'pg';
 
 import {
@@ -63,6 +63,8 @@ export const auth = betterAuth({
 
       adminRoles: ['admin'],
     }),
+
+    bearer(),
 
     openAPI(),
   ],

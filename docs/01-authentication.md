@@ -129,6 +129,61 @@ Roles (campo `user.role`, lowercase): `admin`, `trainer`, `receptionist`, `membe
 
 > Detalle por endpoint en cada documento de módulo (columna **Roles**).
 
+### Acceso controlado (Better Auth admin plugin)
+
+La config de permisos vive en `src/auth/permissions.ts` (`createAccessControl` + `ac.newRole`) y se pasa al plugin `admin` en `src/auth/auth.ts`. Estos permisos los evalúa **el plugin admin de Better Auth** (`/api/auth/admin/*`) y por tanto aplican a los endpoints del módulo Users que lo encapsulan (`/users/*`).
+
+#### ⚠️ Regla de oro: el recurso es `user` (singular), NO `users`
+
+El plugin admin de Better Auth verifica permisos sobre el recurso **`user` (en singular)**. Internamente cada endpoint admin pide algo como:
+
+```ts
+// node_modules/better-auth/dist/plugins/admin/routes.mjs
+permissions: { user: ["create"] }   // ← recurso "user", acción "create"
+```
+
+Y luego `hasPermission` hace `roles[rol].authorize({ user: ["create"] })`. Si el rol no declara el recurso `user`, la autorización **falla y devuelve 403** aunque el rol sea `admin` y aunque el statement declare un recurso `users` (plural).
+
+**Qué pasó en este proyecto (bug corregido):** `permissions.ts` solo declaraba `users: ['create', 'read', ...]` (plural). `POST /users` con cuenta admin devolvía:
+
+```json
+{ "statusCode": 403, "message": "You are not allowed to create users" }
+```
+
+porque el plugin admin pedía `user: ["create"]` y el rol `admin` no tenía nada declarado sobre el recurso `user`. El guard de NestJS (`RolesGuard`) **no** era el problema: ese sí veía el rol `admin`.
+
+**La corrección** fue agregar el recurso `user` (singular) al statement y a los roles. Acciones disponibles del plugin admin y qué endpoint las exige:
+
+| Acción | Endpoint admin que la exige |
+|---|---|
+| `create` | `POST /api/auth/admin/create-user` |
+| `get` | `get-user` |
+| `list` | `list-users` |
+| `update` | `update-user` |
+| `delete` | `remove-user` |
+| `ban` | `ban-user` / `unban-user` |
+| `set-role` | `set-role` (y `create-user` si se envía `role` en el body) |
+| `set-email` | `update-user` (al cambiar email) |
+| `set-password` | `set-user-password` |
+
+Permisos actuales por rol (declarados en `permissions.ts`):
+
+| Rol | `user` (admin plugin) | Otros recursos |
+|---|---|---|
+| **admin** | `create, get, list, update, delete, ban, set-role, set-email, set-password` | CRUD completo del resto |
+| **receptionist** | `get, list` | CRUD members/memberships, payments, attendance |
+| **trainer** | — | read de members/memberships/attendance/trainers; CRUD exercises/routines |
+| **member** | — | solo lectura de lo propio |
+
+#### ¿El recurso `users` (plural) sirve para algo?
+
+**No.** El plugin admin nunca lo consulta: solo usa `user`, `session`, `account`, `verification`. El recurso `users` (plural) que quedó en `permissions.ts` es una referencia muerta del dominio de la app. Puedes:
+
+- **Dejarlo** → no afecta nada (estado actual).
+- **Borrar sus 2 líneas** (statement + rol admin) → tampoco afecta nada; es seguro eliminarlo.
+
+> Si algún día ves `403 "You are not allowed to ..."` en `/users/*` con una cuenta admin, revisa primero que el rol correspondiente tenga declarada la acción sobre el recurso **`user`** en `permissions.ts`.
+
 ## Notas técnicas (para entender límites)
 
 - El token Bearer se valida contra la tabla `session` (`token` + `expiresAt > now()`). Una sesión expirada da **401**.
@@ -145,3 +200,4 @@ Roles (campo `user.role`, lowercase): `admin`, `trainer`, `receptionist`, `membe
 | Token expirado/inválido | 401 `No autenticado` |
 | Sin token en endpoint protegido | 401 `No autenticado` |
 | Rol sin permiso | 403 `No tienes permisos para acceder a este recurso` |
+| `403 You are not allowed to create users` (con cuenta admin) | El rol no tiene `user: ['create']` en `permissions.ts` (recurso singular). Ver sección "Acceso controlado". |

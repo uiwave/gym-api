@@ -9,7 +9,17 @@ const statement = {
   routines: ['create', 'read', 'update', 'delete'],
   exercises: ['create', 'read', 'update', 'delete'],
   reports: ['read'],
-  users: ['create', 'read', 'update', 'delete'],
+  user: [
+    'create',
+    'get',
+    'list',
+    'update',
+    'delete',
+    'ban',
+    'set-role',
+    'set-email',
+    'set-password',
+  ],
 } as const;
 
 export const ac = createAccessControl(statement);
@@ -23,7 +33,18 @@ export const admin = ac.newRole({
   routines: ['create', 'read', 'update', 'delete'],
   exercises: ['create', 'read', 'update', 'delete'],
   reports: ['read'],
-  users: ['create', 'read', 'update', 'delete'],
+  user: [
+    'create',
+    'get',
+    'list',
+    'update',
+    'delete',
+    'ban',
+    'set-role',
+    'set-email',
+    'set-password',
+  ],
+  
 });
 
 export const trainer = ac.newRole({
@@ -40,6 +61,7 @@ export const receptionist = ac.newRole({
   memberships: ['create', 'read', 'update'],
   payments: ['create', 'read'],
   attendance: ['create', 'read'],
+  user: ['get', 'list'],
 });
 
 export const member = ac.newRole({

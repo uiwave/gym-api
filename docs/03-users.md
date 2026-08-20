@@ -67,6 +67,8 @@ Gestión de usuarios del sistema (cuentas de Better Auth). **Solo admin** para e
 - Crear un usuario también puede vincularse a un `member` (ver `02-members.md`, campo `userId`).
 - Banear/desbanear usa el plugin admin de Better Auth; un usuario baneado no podrá autenticarse.
 - Cambiar rol a `admin` solo lo puede hacer un `admin` (ya lo garantiza el endpoint).
+- Los endpoints `/users/*` dependen de los permisos del plugin admin declarados en `src/auth/permissions.ts` sobre el recurso **`user` (singular)** — ver `01-authentication.md`.
+  - **Bug real ya corregido:** antes solo existía el recurso `users` (plural) y el plugin admin pide `user` (singular). Por eso `POST /users` daba `403 "You are not allowed to create users"` incluso con cuenta admin. Se agregó el recurso `user` con las acciones del plugin admin (admin: todas; receptionist: `get`, `list`).
 
 ## Ejemplos
 
