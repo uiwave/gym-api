@@ -47,6 +47,9 @@ services:
       - postgres_data:/var/lib/postgresql/data
       - ./src/database/migrations:/docker-entrypoint-initdb.d:ro
 
+    ports:
+    - "5434:5432"
+
     healthcheck:
       test:
         [
